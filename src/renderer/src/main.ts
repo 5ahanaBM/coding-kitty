@@ -128,4 +128,4 @@ window.kitty.onActivityEvent(({ type, agent: _agent, app: _app }) => {
 })
 
 // ── Start render loop ───────────────────────────────────────────────────────
-renderer.start(() => fsm.state)
+renderer.start(() => ({ state: fsm.state, sleepDepth: fsm.sleepDepth }))

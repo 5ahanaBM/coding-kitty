@@ -42,6 +42,9 @@ export class CatRenderer {
   private springAy = 0   // initial displacement on y at release
   private springDecay = 11.7  // zeta * omega_0 = 0.65 * 18
   private springOmega = 13.7  // omega_d = 18 * sqrt(1 - 0.65^2)
+  private prevState: CatState = 'idle'
+  private zParticles: { y: number; opacity: number; lastSpawn: number }[] = []
+  private lastZSpawn = 0
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!
@@ -85,7 +88,7 @@ export class CatRenderer {
     }
   }
 
-  draw(state: CatState) {
+  draw({ state, sleepDepth }: { state: CatState; sleepDepth: number }) {
     const ctx = this.ctx
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
 
@@ -103,13 +106,26 @@ export class CatRenderer {
 
     this.tickSpring()
 
+    // Wake-up one-shot: detect first frame of 'waking' state
+    if (state === 'waking' && this.prevState !== 'waking') {
+      this.setStretch(0.85, 1.1)
+      this.triggerSpring(0.65)
+    }
+    this.prevState = state
+
     ctx.save()
     ctx.translate(48, 96)   // anchor: canvas center-bottom
     ctx.scale(this.sx, this.sy)
     ctx.translate(-48, -96)
 
     if (state === 'sleeping') {
-      this.drawSleeping()
+      this.drawSleeping(sleepDepth)
+    } else if (state === 'waking') {
+      // Draw idle pose — spring deformation handles the visual
+      this.drawBody('idle')
+      this.drawEars('idle')
+      this.drawFace('idle', blinking)
+      this.drawTail('idle')
     } else if (state === 'scrolling') {
       this.drawScrolling()
     } else if (state === 'agent-thinking') {
@@ -125,6 +141,9 @@ export class CatRenderer {
     }
 
     ctx.restore()
+
+    // Z particles drawn outside ctx.scale — they float in canvas space
+    if (state === 'sleeping') this.tickZParticles()
   }
 
   private drawBody(state: CatState) {
@@ -307,28 +326,64 @@ export class CatRenderer {
     rect(ctx, 16, Math.round(20 + pawBob), 5, 1, DARK)
   }
 
-  private drawSleeping() {
+  private drawSleeping(depth: number) {
     const ctx = this.ctx
-    // Curled up sleeping cat
-    rect(ctx, 6, 14, 16, 10, BODY)
-    // Head tucked down
-    rect(ctx, 9, 12, 8, 6, BODY)
-    // Ears flat
-    rect(ctx, 9, 10, 3, 3, BODY)
-    rect(ctx, 16, 10, 3, 3, BODY)
+
+    // Lerp body from sitting-curl to tight ball as depth → 1
+    // depth=0: wide curled body (16×10), depth=1: tight ball (12×8)
+    const bw = Math.round(16 - depth * 4)   // body width: 16 → 12
+    const bh = Math.round(10 - depth * 2)   // body height: 10 → 8
+    const bx = Math.round(6 + depth * 2)    // body x: 6 → 8 (center tighter)
+
+    rect(ctx, bx, 14, bw, bh, BODY)
+
+    // Head tucked — pulls in slightly at high depth
+    const hx = Math.round(9 + depth * 1)
+    rect(ctx, hx, 12, 8, 6, BODY)
+
+    // Ears flatten more at high depth
+    const earY = Math.round(10 + depth * 1)
+    rect(ctx, hx, earY, 3, 3, BODY)
+    rect(ctx, hx + 5, earY, 3, 3, BODY)
+
     // Closed eyes
     rect(ctx, 10, 14, 3, 1, EYE_CLOSED)
     rect(ctx, 15, 14, 3, 1, EYE_CLOSED)
-    // Zzz
-    ctx.fillStyle = '#aaa'
-    ctx.font = `${P * 2}px monospace`
-    ctx.fillText('z', 20 * P, 10 * P)
-    ctx.fillText('z', 22 * P, 7 * P)
+    // No Zzz here — tickZParticles handles it
   }
 
-  start(getState: () => CatState) {
+  private tickZParticles() {
+    const ctx = this.ctx
+    const now = performance.now()
+
+    // Spawn new Z every 700ms while sleeping
+    if (now - this.lastZSpawn > 700) {
+      this.zParticles.push({ y: 10, opacity: 1, lastSpawn: now })
+      this.lastZSpawn = now
+    }
+
+    // Update and draw each particle
+    ctx.font = `${P * 2}px monospace`
+    for (let i = this.zParticles.length - 1; i >= 0; i--) {
+      const z = this.zParticles[i]
+      // Float upward: 8 logical px over 2s = 0.004 logical px/ms
+      z.y -= 0.004 * (1000 / 60)  // ~per frame at 60fps
+      // Fade over 2s
+      z.opacity -= 1 / (2 * 60)
+      if (z.opacity <= 0) {
+        this.zParticles.splice(i, 1)
+        continue
+      }
+      ctx.globalAlpha = Math.max(0, z.opacity)
+      ctx.fillStyle = '#aaa'
+      ctx.fillText('z', 20 * P, z.y * P)
+    }
+    ctx.globalAlpha = 1
+  }
+
+  start(getInfo: () => { state: CatState; sleepDepth: number }) {
     const loop = () => {
-      this.draw(getState())
+      this.draw(getInfo())
       this.raf = requestAnimationFrame(loop)
     }
     loop()
