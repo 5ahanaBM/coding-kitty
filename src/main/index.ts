@@ -119,10 +119,11 @@ function createWindow() {
     win.setPosition(width - 220, height - 220)
   }
 
+  const recordMode = !!process.env['KITTY_RECORD']
   if (process.env['ELECTRON_RENDERER_URL']) {
-    win.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    win.loadURL(process.env['ELECTRON_RENDERER_URL'] + (recordMode ? '?record=1' : ''))
   } else {
-    win.loadFile(join(__dirname, '../renderer/index.html'))
+    win.loadFile(join(__dirname, '../renderer/index.html'), recordMode ? { search: 'record=1' } : undefined)
   }
 
   win.once('ready-to-show', () => win.show())
@@ -186,8 +187,10 @@ ipcMain.on('move-window', (_e, dx: number, dy: number) => {
 app.whenReady().then(() => {
   createWindow()
   createTray()
-  startCursorTracking()
-  startActivityWatcher()
+  if (!process.env['KITTY_RECORD']) {
+    startCursorTracking()
+    startActivityWatcher()
+  }
 })
 
 app.on('before-quit', () => {

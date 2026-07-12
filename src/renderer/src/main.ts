@@ -129,3 +129,9 @@ window.kitty.onActivityEvent(({ type, agent: _agent, app: _app }) => {
 
 // ── Start render loop ───────────────────────────────────────────────────────
 renderer.start(() => ({ state: fsm.state, sleepDepth: fsm.sleepDepth }))
+
+if (new URLSearchParams(window.location.search).has('record')) {
+  ;(window as any).__kittyCanvas = canvas
+  ;(window as any).__kittyRenderer = renderer
+  ;(window as any).__kittyFsm = fsm
+}
