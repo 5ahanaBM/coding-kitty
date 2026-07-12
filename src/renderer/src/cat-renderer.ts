@@ -20,8 +20,9 @@ function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
 
 const BODY = '#f5c27a'
 const DARK = '#c8853a'
-const EYE_OPEN = '#3a2a1a'
+const EYE_OPEN = '#2a1a0a'
 const EYE_CLOSED = '#3a2a1a'
+const EYE_HI = '#ffffff'
 const NOSE = '#e88a9a'
 const WHISKER = '#bbb'
 const STRIPE = '#d4a45a'
@@ -208,10 +209,9 @@ export class CatRenderer {
       rect(ctx, 15 + eo.x, eyeY, 3, 1, EYE_CLOSED)
     } else {
       rect(ctx, 10 + eo.x, eyeY + eo.y, 3, 3, EYE_OPEN)
-      // Pupil highlight
-      px(ctx, 10 + eo.x, eyeY + eo.y, '#6a5a4a')
+      px(ctx, 12 + eo.x, eyeY + eo.y, EYE_HI)   // catchlight upper-right
       rect(ctx, 15 + eo.x, eyeY + eo.y, 3, 3, EYE_OPEN)
-      px(ctx, 15 + eo.x, eyeY + eo.y, '#6a5a4a')
+      px(ctx, 17 + eo.x, eyeY + eo.y, EYE_HI)   // catchlight upper-right
     }
 
     // Nose
@@ -273,9 +273,9 @@ export class CatRenderer {
     rect(ctx, 9, 10, 10, 8, BODY)
     // Wide alert eyes (bigger than normal)
     rect(ctx, 10, 12, 4, 4, EYE_OPEN)
-    px(ctx, 10, 12, '#6a5a4a')
+    px(ctx, 13, 12, EYE_HI)   // catchlight upper-right
     rect(ctx, 15, 12, 4, 4, EYE_OPEN)
-    px(ctx, 15, 12, '#6a5a4a')
+    px(ctx, 18, 12, EYE_HI)   // catchlight upper-right
     // Nose + mouth
     rect(ctx, 13, 16, 2, 1, NOSE)
     // Thought bubbles (animated)
