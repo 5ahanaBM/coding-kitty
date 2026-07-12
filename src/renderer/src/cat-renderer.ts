@@ -34,11 +34,48 @@ export class CatRenderer {
   private eyeOffset: EyePos = { x: 0, y: 0 }
   private tailAngle = 0
   private raf = 0
+  private sx = 1
+  private sy = 1
+  private springActive = false
+  private springStartTime = 0
+  private springAx = 0   // initial displacement on x at release
+  private springAy = 0   // initial displacement on y at release
+  private springDecay = 11.7  // zeta * omega_0 = 0.65 * 18
+  private springOmega = 13.7  // omega_d = 18 * sqrt(1 - 0.65^2)
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!
     // Clear canvas to transparent
     this.ctx.clearRect(0, 0, canvas.width, canvas.height)
+  }
+
+  setStretch(sx: number, sy: number) {
+    this.sx = Math.max(0.82, Math.min(1.18, sx))
+    this.sy = Math.max(0.82, Math.min(1.18, sy))
+  }
+
+  triggerSpring(zeta: number) {
+    const omega0 = 18
+    this.springDecay = zeta * omega0
+    this.springOmega = omega0 * Math.sqrt(1 - zeta * zeta)
+    this.springAx = this.sx - 1
+    this.springAy = this.sy - 1
+    this.springStartTime = performance.now()
+    this.springActive = true
+  }
+
+  private tickSpring() {
+    if (!this.springActive) return
+    const t = (performance.now() - this.springStartTime) / 1000
+    const env = Math.exp(-this.springDecay * t)
+    const osc = Math.cos(this.springOmega * t)
+    this.sx = 1 + this.springAx * env * osc
+    this.sy = 1 + this.springAy * env * osc
+    if (Math.abs(this.sx - 1) < 0.02 && Math.abs(this.sy - 1) < 0.02) {
+      this.sx = 1
+      this.sy = 1
+      this.springActive = false
+    }
   }
 
   setEyeOffset(ox: number, oy: number) {
@@ -64,6 +101,13 @@ export class CatRenderer {
 
     this.tailAngle = Math.sin(this.frame * 0.05) * 3
 
+    this.tickSpring()
+
+    ctx.save()
+    ctx.translate(48, 96)   // anchor: canvas center-bottom
+    ctx.scale(this.sx, this.sy)
+    ctx.translate(-48, -96)
+
     if (state === 'sleeping') {
       this.drawSleeping()
     } else if (state === 'scrolling') {
@@ -79,6 +123,8 @@ export class CatRenderer {
       this.drawTail(state)
       if (state === 'kneading') this.drawPaws()
     }
+
+    ctx.restore()
   }
 
   private drawBody(state: CatState) {
@@ -95,10 +141,6 @@ export class CatRenderer {
     rect(ctx, 7, 22, 4, 1, DARK)
     rect(ctx, 17, 22, 4, 1, DARK)
 
-    if (state === 'stretching') {
-      // Stretch the body wider
-      rect(ctx, 4, 12, 20, 10, BODY)
-    }
   }
 
   private drawEars(state: CatState) {
@@ -231,8 +273,7 @@ export class CatRenderer {
     ctx.stroke()
     rect(ctx, 13, 16, 2, 1, NOSE)
     this.drawTail('idle')
-    ctx.restore()
-    // Star sparkles
+    // Star sparkles — inside save/restore so they squash with body
     ctx.fillStyle = '#ffd700'
     const t = this.frame * 0.15
     for (let i = 0; i < 3; i++) {
@@ -240,6 +281,7 @@ export class CatRenderer {
       const sy = (8 + Math.sin(t + i * 2.1) * 4) * P
       ctx.fillRect(sx, sy, P, P)
     }
+    ctx.restore()
   }
 
   private drawScrolling() {

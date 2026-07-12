@@ -38,6 +38,8 @@ window.kitty.onCursorPos(({ relX, relY }) => {
 let dragging = false
 let lastScreenX = 0
 let lastScreenY = 0
+let totalDragPx = 0  // cumulative movement for 5px threshold
+const velHistory: { x: number; y: number; t: number }[] = []
 
 catEl.addEventListener('mouseenter', () => {
   window.kitty.setIgnoreMouse(false)
@@ -49,8 +51,11 @@ catEl.addEventListener('mouseleave', () => {
 
 catEl.addEventListener('mousedown', (e) => {
   dragging = true
+  totalDragPx = 0
+  velHistory.length = 0
   lastScreenX = e.screenX
   lastScreenY = e.screenY
+  velHistory.push({ x: e.screenX, y: e.screenY, t: performance.now() })
   fsm.onDragStart()
   e.preventDefault()
 })
@@ -60,6 +65,27 @@ window.addEventListener('mousemove', (e) => {
   const dx = e.screenX - lastScreenX
   const dy = e.screenY - lastScreenY
   window.kitty.moveWindow(dx, dy)
+
+  totalDragPx += Math.sqrt(dx * dx + dy * dy)
+
+  if (totalDragPx >= 5) {
+    // Stretch along motion direction (taffy model)
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist > 0) {
+      const nx = dx / dist  // normalized direction
+      const ny = dy / dist
+      const amount = Math.min(totalDragPx / 80, 0.18)  // max 0.18 stretch
+      renderer.setStretch(
+        1 + Math.abs(nx) * amount,   // stretch along X if moving horizontally
+        1 + Math.abs(ny) * amount    // stretch along Y if moving vertically
+      )
+    }
+  }
+
+  // Rolling velocity window — keep last 3 events
+  velHistory.push({ x: e.screenX, y: e.screenY, t: performance.now() })
+  if (velHistory.length > 3) velHistory.shift()
+
   lastScreenX = e.screenX
   lastScreenY = e.screenY
 })
@@ -69,6 +95,24 @@ window.addEventListener('mouseup', () => {
   dragging = false
   fsm.onDragEnd()
   window.kitty.setIgnoreMouse(true, { forward: true })
+
+  // Compute release velocity from rolling window
+  let zeta = 0.65  // default: full jelly
+  if (velHistory.length >= 2) {
+    const first = velHistory[0]
+    const last = velHistory[velHistory.length - 1]
+    const dt = (last.t - first.t) / 1000  // seconds
+    if (dt > 0) {
+      const ddx = last.x - first.x
+      const ddy = last.y - first.y
+      const velocityPx = Math.sqrt(ddx * ddx + ddy * ddy) / dt
+      // Lerp zeta: 200px/s → 0.65, 600px/s → 0.90
+      const t = Math.max(0, Math.min(1, (velocityPx - 200) / 400))
+      zeta = 0.65 + t * (0.90 - 0.65)
+    }
+  }
+
+  renderer.triggerSpring(zeta)
 })
 
 // ── Activity events from main process (FSEvents, agent server, app detection) ─
