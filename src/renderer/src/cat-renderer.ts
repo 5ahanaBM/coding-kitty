@@ -23,6 +23,8 @@ const DARK = '#c8853a'
 const EYE_OPEN = '#2a1a0a'
 const EYE_CLOSED = '#3a2a1a'
 const EYE_HI = '#ffffff'
+const EYE_IRIS = '#3a6e3a'
+const EYE_PUPIL = '#2a1a0a'
 const NOSE = '#e88a9a'
 const WHISKER = '#bbb'
 const STRIPE = '#d4a45a'
@@ -284,6 +286,18 @@ export class CatRenderer {
     px(ctx, 17, Math.round(7 - bob + rightShift), DARK)
   }
 
+  private drawEye(ctx: CanvasRenderingContext2D, bx: number, by: number, eo: EyePos) {
+    // Sclera: top row + right column mid
+    rect(ctx, bx + eo.x,     by + eo.y,     3, 1, BODY)
+    px(ctx,  bx + 2 + eo.x,  by + 1 + eo.y, BODY)
+    // Iris: left 2 cols of rows 1-2
+    rect(ctx, bx + eo.x,     by + 1 + eo.y, 2, 2, EYE_IRIS)
+    // Pupil: center of row 2
+    px(ctx,  bx + 1 + eo.x,  by + 2 + eo.y, EYE_PUPIL)
+    // Catchlight: upper-right
+    px(ctx,  bx + 2 + eo.x,  by + eo.y,     EYE_HI)
+  }
+
   private drawFace(state: CatState, blinking: boolean, isYawning = false) {
     const ctx = this.ctx
     const eo = this.eyeOffset
@@ -300,10 +314,8 @@ export class CatRenderer {
       rect(ctx, 10 + eo.x, eyeY, 3, 1, EYE_CLOSED)
       rect(ctx, 15 + eo.x, eyeY, 3, 1, EYE_CLOSED)
     } else {
-      rect(ctx, 10 + eo.x, eyeY + eo.y, 3, 3, EYE_OPEN)
-      px(ctx, 12 + eo.x, eyeY + eo.y, EYE_HI)   // catchlight upper-right
-      rect(ctx, 15 + eo.x, eyeY + eo.y, 3, 3, EYE_OPEN)
-      px(ctx, 17 + eo.x, eyeY + eo.y, EYE_HI)   // catchlight upper-right
+      this.drawEye(ctx, 10, eyeY, eo)
+      this.drawEye(ctx, 15, eyeY, eo)
     }
 
     // Nose
@@ -367,11 +379,9 @@ export class CatRenderer {
     px(ctx, 17, 5, DARK)
     // Face
     rect(ctx, 9, 10, 10, 8, BODY)
-    // Wide alert eyes (bigger than normal)
-    rect(ctx, 10, 12, 4, 4, EYE_OPEN)
-    px(ctx, 13, 12, EYE_HI)   // catchlight upper-right
-    rect(ctx, 15, 12, 4, 4, EYE_OPEN)
-    px(ctx, 18, 12, EYE_HI)   // catchlight upper-right
+    // Alert structured eyes (3×3)
+    this.drawEye(ctx, 10, 12, { x: 0, y: 0 })
+    this.drawEye(ctx, 15, 12, { x: 0, y: 0 })
     // Nose + mouth
     rect(ctx, 13, 16, 2, 1, NOSE)
     // Thought bubbles (animated)
