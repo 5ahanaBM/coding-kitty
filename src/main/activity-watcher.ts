@@ -1,8 +1,6 @@
 import { watch, FSWatcher } from 'fs'
 import { createServer, Server } from 'http'
 import { exec } from 'child_process'
-import { homedir } from 'os'
-import { join } from 'path'
 
 export type ActivityEvent =
   | { type: 'file-saved' }
@@ -28,9 +26,11 @@ export class ActivityWatcher {
   private agentServer: Server | null = null
   private appPollInterval: ReturnType<typeof setInterval> | null = null
   private onEvent: (e: ActivityEvent) => void
+  private watchDirs: string[]
 
-  constructor(onEvent: (e: ActivityEvent) => void) {
+  constructor(onEvent: (e: ActivityEvent) => void, watchDirs: string[]) {
     this.onEvent = onEvent
+    this.watchDirs = watchDirs
   }
 
   start() {
@@ -47,21 +47,9 @@ export class ActivityWatcher {
 
   // ── 1. FSEvents: file saves in project dirs ─────────────────────────────
   private startFileWatcher() {
-    const home = homedir()
-    const candidates = [
-      join(home, 'Developer'),
-      join(home, 'Projects'),
-      join(home, 'Code'),
-      join(home, 'code'),
-      join(home, 'workspace'),
-      join(home, 'src'),
-      join(home, 'Side Quests'), // the user's own project dir
-      join(home, 'Documents'),
-    ]
-
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-    for (const dir of candidates) {
+    for (const dir of this.watchDirs) {
       try {
         const w = watch(dir, { recursive: true }, (_event, filename) => {
           if (!filename) return

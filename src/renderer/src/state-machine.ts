@@ -2,7 +2,6 @@ import type { CatState } from './cat-renderer'
 
 const KNEADING_TIMEOUT  = 800
 const LOOKING_TIMEOUT   = 2000
-const SCROLL_TIMEOUT    = 800
 const SLEEP_TIMEOUT     = 5 * 60 * 1000
 const AGENT_DONE_LINGER = 3000  // celebrate for 3s after agent finishes
 
@@ -11,7 +10,6 @@ export class StateMachine {
   private _inCodeApp = false
   private keyTimer    = 0
   private mouseTimer  = 0
-  private scrollTimer = 0
   private sleepTimer  = 0
   private lastActivity = Date.now()
   private sleepStart = 0
@@ -30,7 +28,7 @@ export class StateMachine {
     clearTimeout(this.keyTimer)
     clearTimeout(this.sleepTimer)
     if (this._state === 'sleeping') this.enterWaking()
-    if (this._state !== 'stretching' && this._state !== 'scrolling' && this._state !== 'agent-thinking' && this._state !== 'waking') {
+    if (this._state !== 'stretching' && this._state !== 'agent-thinking' && this._state !== 'waking') {
       this._state = 'kneading'
     }
     this.keyTimer = window.setTimeout(() => {
@@ -73,18 +71,6 @@ export class StateMachine {
       if (this._state === 'looking') this._state = 'idle'
       this.schedSleep()
     }, LOOKING_TIMEOUT)
-  }
-
-  onScrollActivity() {
-    this.lastActivity = Date.now()
-    clearTimeout(this.scrollTimer)
-    clearTimeout(this.sleepTimer)
-    if (this._state === 'sleeping') this.enterWaking()
-    if (this._state !== 'stretching' && this._state !== 'agent-thinking' && this._state !== 'waking') this._state = 'scrolling'
-    this.scrollTimer = window.setTimeout(() => {
-      if (this._state === 'scrolling') this._state = 'idle'
-      this.schedSleep()
-    }, SCROLL_TIMEOUT)
   }
 
   onEnteredCodeApp() {

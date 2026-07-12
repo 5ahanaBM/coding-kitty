@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen } from 'electron'
+import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, unlinkSync } from 'fs'
+import { homedir } from 'os'
 import { ActivityWatcher } from './activity-watcher'
 
 let win: BrowserWindow
@@ -8,7 +9,30 @@ let tray: Tray
 let cursorInterval: ReturnType<typeof setInterval>
 let watcher: ActivityWatcher
 
-const POS_FILE = () => join(app.getPath('userData'), 'position.json')
+const POS_FILE    = () => join(app.getPath('userData'), 'position.json')
+const CONFIG_FILE = () => join(app.getPath('userData'), 'config.json')
+
+const DEFAULT_WATCH_DIRS = [
+  'Developer', 'Projects', 'Code', 'code',
+  'workspace', 'src', 'Side Quests', 'Documents',
+].map(d => join(homedir(), d))
+
+interface Config {
+  watchDirs: string[]
+}
+
+function loadConfig(): Config {
+  try {
+    const raw = readFileSync(CONFIG_FILE(), 'utf-8')
+    const parsed = JSON.parse(raw) as Partial<Config>
+    if (Array.isArray(parsed.watchDirs) && parsed.watchDirs.length > 0) {
+      return { watchDirs: parsed.watchDirs }
+    }
+  } catch { /* missing or corrupt — write defaults */ }
+  const cfg: Config = { watchDirs: DEFAULT_WATCH_DIRS }
+  try { writeFileSync(CONFIG_FILE(), JSON.stringify(cfg, null, 2)) } catch { /* ignore */ }
+  return cfg
+}
 
 let pendingSaveTimer: ReturnType<typeof setTimeout> | null = null
 let pendingSaveX = 0
@@ -119,6 +143,8 @@ function createTray() {
     Menu.buildFromTemplate([
       { label: 'Coding Kitty', enabled: false },
       { type: 'separator' },
+      { label: 'Open Config…', click: () => shell.openPath(CONFIG_FILE()) },
+      { type: 'separator' },
       { label: 'Quit', click: () => app.quit() }
     ])
   )
@@ -135,9 +161,10 @@ function startCursorTracking() {
 }
 
 function startActivityWatcher() {
+  const config = loadConfig()
   watcher = new ActivityWatcher((event) => {
     sendToRenderer('activity-event', event)
-  })
+  }, config.watchDirs)
   watcher.start()
 }
 

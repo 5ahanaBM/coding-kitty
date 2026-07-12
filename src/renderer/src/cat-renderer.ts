@@ -1,7 +1,7 @@
 // Draws a simple pixel-art cat on canvas. Placeholder until real sprites land.
 // Each frame is drawn procedurally so we have something to look at immediately.
 
-export type CatState = 'idle' | 'kneading' | 'looking' | 'sleeping' | 'waking' | 'stretching' | 'scrolling' | 'agent-thinking' | 'agent-done'
+export type CatState = 'idle' | 'kneading' | 'looking' | 'sleeping' | 'waking' | 'stretching' | 'agent-thinking' | 'agent-done'
 
 interface EyePos { x: number; y: number }
 
@@ -128,8 +128,6 @@ export class CatRenderer {
       this.drawEars('idle')
       this.drawFace('idle', blinking)
       this.drawTail('idle')
-    } else if (state === 'scrolling') {
-      this.drawScrolling()
     } else if (state === 'agent-thinking') {
       this.drawAgentThinking()
     } else if (state === 'agent-done') {
@@ -308,29 +306,6 @@ export class CatRenderer {
       ctx.fillRect(sx, sy, P, P)
     }
     ctx.restore()
-  }
-
-  private drawScrolling() {
-    const ctx = this.ctx
-    // Cat batting a paper roll unspooling downward
-    this.drawBody('idle')
-    this.drawEars('idle')
-    this.drawFace('idle', false)
-    this.drawTail('idle')
-
-    // Paper roll — cylinder at top-right of cat
-    rect(ctx, 18, 8, 6, 5, '#f5f0e0')
-    rect(ctx, 19, 8, 4, 1, '#d4c8a0') // shadow stripe
-    rect(ctx, 18, 12, 6, 1, '#b0a070') // bottom edge
-
-    // Unspooling paper strip, length pulses with frame
-    const stripLen = 4 + Math.abs(Math.sin(this.frame * 0.3)) * 6
-    rect(ctx, 20, 13, 2, Math.round(stripLen), '#f5f0e0')
-
-    // Paw batting the paper
-    const pawBob = Math.sin(this.frame * 0.5) * 2
-    rect(ctx, 16, Math.round(18 + pawBob), 5, 3, BODY)
-    rect(ctx, 16, Math.round(20 + pawBob), 5, 1, DARK)
   }
 
   private drawSleeping(depth: number) {
