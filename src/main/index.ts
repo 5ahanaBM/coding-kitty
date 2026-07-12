@@ -105,7 +105,14 @@ function createWindow() {
 }
 
 function createTray() {
-  const icon = nativeImage.createEmpty()
+  const trayIconPath = join(__dirname, '../../resources/tray-icon-Template.png')
+  let icon: ReturnType<typeof nativeImage.createEmpty>
+  try {
+    icon = nativeImage.createFromPath(trayIconPath)
+    if (icon.isEmpty()) throw new Error('empty')
+  } catch {
+    icon = nativeImage.createEmpty()
+  }
   tray = new Tray(icon)
   tray.setToolTip('Coding Kitty')
   tray.setContextMenu(
