@@ -292,10 +292,8 @@ export class CatRenderer {
     px(ctx,  bx + 2 + eo.x,  by + 1 + eo.y, BODY)
     // Iris: left 2 cols of rows 1-2
     rect(ctx, bx + eo.x,     by + 1 + eo.y, 2, 2, EYE_IRIS)
-    // Pupil: center of row 2, with intra-cell shift toward look direction
-    const intraCellX = Math.max(-1, Math.min(1, eo.x))
-    const intraCellY = Math.max(-1, Math.min(0, eo.y))
-    px(ctx,  bx + 1 + eo.x + intraCellX,  by + 2 + eo.y + intraCellY, EYE_PUPIL)
+    // Pupil: center of row 2 (tracking via block shift)
+    px(ctx,  bx + 1 + eo.x,  by + 2 + eo.y, EYE_PUPIL)
     // Catchlight: row 2, col 2
     px(ctx,  bx + 2 + eo.x,  by + 2 + eo.y,     EYE_HI)
   }
