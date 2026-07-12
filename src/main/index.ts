@@ -1,11 +1,62 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, screen } from 'electron'
 import { join } from 'path'
+import { readFileSync, writeFileSync, unlinkSync } from 'fs'
 import { ActivityWatcher } from './activity-watcher'
 
 let win: BrowserWindow
 let tray: Tray
 let cursorInterval: ReturnType<typeof setInterval>
 let watcher: ActivityWatcher
+
+const POS_FILE = () => join(app.getPath('userData'), 'position.json')
+
+let pendingSaveTimer: ReturnType<typeof setTimeout> | null = null
+let pendingSaveX = 0
+let pendingSaveY = 0
+
+function savePosition(x: number, y: number) {
+  pendingSaveX = x
+  pendingSaveY = y
+  if (pendingSaveTimer) clearTimeout(pendingSaveTimer)
+  pendingSaveTimer = setTimeout(() => {
+    try {
+      writeFileSync(POS_FILE(), JSON.stringify({ x: pendingSaveX, y: pendingSaveY }))
+    } catch { /* ignore write errors */ }
+    pendingSaveTimer = null
+  }, 500)
+}
+
+function flushPosition() {
+  if (pendingSaveTimer) {
+    clearTimeout(pendingSaveTimer)
+    pendingSaveTimer = null
+    try {
+      writeFileSync(POS_FILE(), JSON.stringify({ x: pendingSaveX, y: pendingSaveY }))
+    } catch { /* ignore */ }
+  }
+}
+
+function loadPosition(): { x: number; y: number } | null {
+  try {
+    const raw = readFileSync(POS_FILE(), 'utf-8')
+    const pos = JSON.parse(raw)
+    if (typeof pos.x !== 'number' || typeof pos.y !== 'number') throw new Error()
+
+    // Verify position is within bounds of a connected display
+    const display = screen.getDisplayMatching({ x: pos.x, y: pos.y, width: 200, height: 200 })
+    const wa = display.workArea
+    if (pos.x >= wa.x && pos.y >= wa.y &&
+        pos.x + 200 <= wa.x + wa.width &&
+        pos.y + 200 <= wa.y + wa.height) {
+      return pos
+    }
+    // Off all displays — fall through to null
+    return null
+  } catch {
+    try { unlinkSync(POS_FILE()) } catch { /* ignore */ }
+    return null
+  }
+}
 
 function sendToRenderer(channel: string, data: unknown) {
   if (win && !win.isDestroyed() && win.webContents) {
@@ -36,8 +87,13 @@ function createWindow() {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   win.setIgnoreMouseEvents(true, { forward: true })
 
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize
-  win.setPosition(width - 220, height - 220)
+  const saved = loadPosition()
+  if (saved) {
+    win.setPosition(saved.x, saved.y)
+  } else {
+    const { width, height } = screen.getPrimaryDisplay().workAreaSize
+    win.setPosition(width - 220, height - 220)
+  }
 
   if (process.env['ELECTRON_RENDERER_URL']) {
     win.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -87,7 +143,10 @@ ipcMain.on('set-ignore-mouse', (_e, ignore: boolean, opts?: { forward: boolean }
 ipcMain.on('move-window', (_e, dx: number, dy: number) => {
   if (!win || win.isDestroyed()) return
   const [x, y] = win.getPosition()
-  win.setPosition(x + dx, y + dy)
+  const nx = x + dx
+  const ny = y + dy
+  win.setPosition(nx, ny)
+  savePosition(nx, ny)
 })
 
 app.whenReady().then(() => {
@@ -98,6 +157,7 @@ app.whenReady().then(() => {
 })
 
 app.on('before-quit', () => {
+  flushPosition()
   watcher?.stop()
   clearInterval(cursorInterval)
 })
