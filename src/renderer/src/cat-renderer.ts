@@ -46,6 +46,8 @@ export class CatRenderer {
   private zParticles: { y: number; opacity: number }[] = []
   private lastZSpawn = 0
   private lastTickTime = 0
+  private breathPeriod = 4       // seconds, randomized ±20% per cycle
+  private breathLastSign = 0     // tracks zero-crossing for period randomization
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!
@@ -119,6 +121,17 @@ export class CatRenderer {
     ctx.translate(48, 96)   // anchor: canvas center-bottom
     ctx.scale(this.sx, this.sy)
     ctx.translate(-48, -96)
+
+    const nowSec = performance.now() / 1000
+    const breathPhase = nowSec * (2 * Math.PI / this.breathPeriod)
+    const breathY = Math.sin(breathPhase) * 0.5
+    ctx.translate(0, breathY * P)
+    // Randomize period at zero-crossing
+    const breathSign = Math.sign(Math.sin(breathPhase))
+    if (breathSign !== this.breathLastSign && this.breathLastSign !== 0) {
+      this.breathPeriod = 3.5 + Math.random() * 1.5
+    }
+    this.breathLastSign = breathSign
 
     if (state === 'sleeping') {
       this.drawSleeping(sleepDepth)
