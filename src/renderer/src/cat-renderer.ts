@@ -310,7 +310,7 @@ export class CatRenderer {
     rect(ctx, 13, 16, 2, 1, NOSE)
     // Mouth — wider when yawning
     if (isYawning) {
-      px(ctx, 11, 17, DARK); px(ctx, 12, 17, DARK); px(ctx, 14, 17, DARK); px(ctx, 15, 17, DARK)
+      px(ctx, 13, 17, DARK); px(ctx, 14, 17, DARK)
     } else {
       px(ctx, 12, 17, DARK)
       px(ctx, 15, 17, DARK)
