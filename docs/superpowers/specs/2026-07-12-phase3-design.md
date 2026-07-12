@@ -23,8 +23,9 @@ Three features:
 
 ### During Drag
 - 5px minimum movement before squash engages
-- Squash axis of motion, stretch perpendicular (e.g. dragging right: scaleX < 1, scaleY > 1)
-- Range clamped to 0.82–1.18
+- **Stretch along motion direction, squash perpendicular** (inertia/taffy model): drag right → scaleX > 1 (wider), scaleY < 1 (shorter). Body trails behind drag point.
+- Diagonal drags: decompose velocity into X/Y components, apply proportionally to scaleX/scaleY. No dominant-axis snapping.
+- Range clamped to 0.82–1.18 on each axis independently
 
 ### On Release (Spring)
 Damped harmonic oscillator animating `sx` and `sy` back to 1.0:
@@ -39,12 +40,14 @@ Where:
 - `decay_rate = zeta * omega_0` (omega_0 = 18 rad/s fixed)
 - `omega_d = omega_0 * sqrt(1 - zeta^2)`
 
+**Velocity measurement:** rolling window of last 3 `mousemove` events, each stored as `{x, y, t}`. At `mouseup`, release velocity = `distance(history[0], history[last]) / (history[last].t - history[0].t)` in px/s. 2D magnitude. Avoids single-event noise from a slow final event before release.
+
 Velocity-scaled damping (zeta):
 - Release velocity < 200px/s → zeta = 0.65 (full jelly, ~280ms settle, 2-3 oscillations)
 - Release velocity > 600px/s → zeta = 0.90 (near-critical, minimal wobble — user relocating)
 - Linear interpolation between
 
-Hard convergence: when `|sx - 1.0| < 0.02 && |sy - 1.0| < 0.02` → snap to 1.0, cancel rAF.
+Hard convergence: when `|sx - 1.0| < 0.02 && |sy - 1.0| < 0.02` → snap sx/sy to 1.0, mark spring inactive (`springActive = false`). Main rAF loop continues uninterrupted — only spring physics computation stops.
 
 ### Remove Stretching Draw Path
 `drawBody()` special case for `'stretching'` state (lines 98–101 in cat-renderer.ts) is removed. FSM keeps `'stretching'` state for transition guards. All deformation now owned by `ctx.scale` spring.
@@ -102,7 +105,7 @@ Hard convergence: when `|sx - 1.0| < 0.02 && |sy - 1.0| < 0.02` → snap to 1.0,
 - `onScrollActivity`
 
 **Exempt — sleeping → stretching directly:**
-- `onDragStart` — user physically grabbing cat; waking stretch would conflict with drag stretch physics. "Yanked awake" reads as more characterful.
+- `onDragStart` — sleeping → stretching directly (no waking state). Drag spring is the wake animation; a separate waking stretch would conflict. `onDragEnd` always transitions to `'idle'` — cat stays awake after drag regardless of prior sleep state.
 
 ---
 
