@@ -14,15 +14,22 @@ export class StateMachine {
   private scrollTimer = 0
   private sleepTimer  = 0
   private lastActivity = Date.now()
+  private sleepStart = 0
+  private wakeTimer = 0
 
   get state(): CatState { return this._state }
+
+  get sleepDepth(): number {
+    if (this._state !== 'sleeping') return 0
+    return Math.min(1, (Date.now() - this.sleepStart) / 30000)
+  }
 
   // File saved anywhere in project dirs
   onFileSaved() {
     this.lastActivity = Date.now()
     clearTimeout(this.keyTimer)
     clearTimeout(this.sleepTimer)
-    if (this._state === 'sleeping') this._state = 'idle'
+    if (this._state === 'sleeping') this.enterWaking()
     if (this._state !== 'stretching' && this._state !== 'scrolling' && this._state !== 'agent-thinking') {
       this._state = 'kneading'
     }
@@ -36,7 +43,7 @@ export class StateMachine {
   onAgentThinking() {
     this.lastActivity = Date.now()
     clearTimeout(this.sleepTimer)
-    if (this._state === 'sleeping') this._state = 'idle'
+    if (this._state === 'sleeping') this.enterWaking()
     this._state = 'agent-thinking'
   }
 
@@ -60,7 +67,7 @@ export class StateMachine {
     this.lastActivity = Date.now()
     clearTimeout(this.mouseTimer)
     clearTimeout(this.sleepTimer)
-    if (this._state === 'sleeping') this._state = 'idle'
+    if (this._state === 'sleeping') this.enterWaking()
     if (this._state === 'idle') this._state = 'looking'
     this.mouseTimer = window.setTimeout(() => {
       if (this._state === 'looking') this._state = 'idle'
@@ -72,7 +79,7 @@ export class StateMachine {
     this.lastActivity = Date.now()
     clearTimeout(this.scrollTimer)
     clearTimeout(this.sleepTimer)
-    if (this._state === 'sleeping') this._state = 'idle'
+    if (this._state === 'sleeping') this.enterWaking()
     if (this._state !== 'stretching' && this._state !== 'agent-thinking') this._state = 'scrolling'
     this.scrollTimer = window.setTimeout(() => {
       if (this._state === 'scrolling') this._state = 'idle'
@@ -93,6 +100,15 @@ export class StateMachine {
   onDragStart() { this._state = 'stretching' }
   onDragEnd()   { this._state = 'idle' }
 
+  private enterWaking() {
+    clearTimeout(this.wakeTimer)
+    this._state = 'waking'
+    this.wakeTimer = window.setTimeout(() => {
+      if (this._state === 'waking') this._state = 'idle'
+      this.schedSleep()
+    }, 200)
+  }
+
   private schedSleep() {
     clearTimeout(this.sleepTimer)
     // Don't schedule sleep if currently in a code app (user is reading/thinking)
@@ -100,6 +116,7 @@ export class StateMachine {
     this.sleepTimer = window.setTimeout(() => {
       if (Date.now() - this.lastActivity >= SLEEP_TIMEOUT - 100) {
         this._state = 'sleeping'
+        this.sleepStart = Date.now()
       }
     }, SLEEP_TIMEOUT)
   }

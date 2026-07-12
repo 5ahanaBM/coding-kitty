@@ -1,7 +1,7 @@
 // Draws a simple pixel-art cat on canvas. Placeholder until real sprites land.
 // Each frame is drawn procedurally so we have something to look at immediately.
 
-export type CatState = 'idle' | 'kneading' | 'looking' | 'sleeping' | 'stretching' | 'scrolling' | 'agent-thinking' | 'agent-done'
+export type CatState = 'idle' | 'kneading' | 'looking' | 'sleeping' | 'waking' | 'stretching' | 'scrolling' | 'agent-thinking' | 'agent-done'
 
 interface EyePos { x: number; y: number }
 
