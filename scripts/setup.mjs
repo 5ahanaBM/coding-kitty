@@ -17,6 +17,13 @@ const POST_HOOK = {
   matcher: '.*',
   hooks: [{
     type: 'command',
+    command: `curl -s -X POST http://localhost:23456/status -H 'Content-Type: application/json' -d '{"type":"thinking","agent":"claude-code"}' || true`
+  }]
+}
+
+const STOP_HOOK = {
+  hooks: [{
+    type: 'command',
     command: `curl -s -X POST http://localhost:23456/status -H 'Content-Type: application/json' -d '{"type":"done","agent":"claude-code"}' || true`
   }]
 }
@@ -32,6 +39,9 @@ If the file doesn't exist, create it with this content:
     ],
     "PostToolUse": [
       ${JSON.stringify(POST_HOOK, null, 6).split('\n').join('\n      ')}
+    ],
+    "Stop": [
+      ${JSON.stringify(STOP_HOOK, null, 6).split('\n').join('\n      ')}
     ]
   }
 }
@@ -61,18 +71,21 @@ try {
   if (!config.hooks || typeof config.hooks !== 'object' || Array.isArray(config.hooks)) config.hooks = {}
   if (!Array.isArray(config.hooks.PreToolUse))  config.hooks.PreToolUse  = []
   if (!Array.isArray(config.hooks.PostToolUse)) config.hooks.PostToolUse = []
+  if (!Array.isArray(config.hooks.Stop))        config.hooks.Stop        = []
 
   // Per-array idempotency — only append what's missing
   const preExists  = hasEntry(config.hooks.PreToolUse,  23456)
   const postExists = hasEntry(config.hooks.PostToolUse, 23456)
+  const stopExists = hasEntry(config.hooks.Stop,        23456)
 
-  if (preExists && postExists) {
+  if (preExists && postExists && stopExists) {
     console.log('✓ Coding Kitty hooks already installed. Nothing to do.')
     process.exit(0)
   }
 
   if (!preExists)  config.hooks.PreToolUse.push(PRE_HOOK)
   if (!postExists) config.hooks.PostToolUse.push(POST_HOOK)
+  if (!stopExists) config.hooks.Stop.push(STOP_HOOK)
 
   writeFileSync(SETTINGS_PATH, JSON.stringify(config, null, 2))
   console.log('✓ Coding Kitty hooks installed.')

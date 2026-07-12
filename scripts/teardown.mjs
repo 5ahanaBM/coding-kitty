@@ -14,7 +14,7 @@ Manually remove from ~/.claude/settings.json any hook entry whose
     "hooks": [{ "type": "command", "command": "curl ... localhost:23456 ..." }]
   }
 
-Remove the entire object from the PreToolUse and PostToolUse arrays.
+Remove the entire object from the PreToolUse, PostToolUse, and Stop arrays.
 `
 
 try {
@@ -38,8 +38,11 @@ try {
       : []
 
   // Leave empty arrays — do not delete keys
-  config.hooks.PreToolUse  = filter(config.hooks.PreToolUse)
-  config.hooks.PostToolUse = filter(config.hooks.PostToolUse)
+  for (const key of Object.keys(config.hooks)) {
+    if (Array.isArray(config.hooks[key])) {
+      config.hooks[key] = filter(config.hooks[key])
+    }
+  }
 
   writeFileSync(SETTINGS_PATH, JSON.stringify(config, null, 2))
   console.log('✓ Coding Kitty hooks removed.')

@@ -1,19 +1,21 @@
 import type { CatState } from './cat-renderer'
 
-const KNEADING_TIMEOUT  = 1600
-const LOOKING_TIMEOUT   = 2000
-const SLEEP_TIMEOUT     = 5 * 60 * 1000
-const AGENT_DONE_LINGER = 3000  // celebrate for 3s after agent finishes
+const KNEADING_TIMEOUT   = 1600
+const LOOKING_TIMEOUT    = 2000
+const SLEEP_TIMEOUT      = 5 * 60 * 1000
+const AGENT_DONE_LINGER  = 3000
+const THINKING_TIMEOUT   = 5 * 60 * 1000
 
 export class StateMachine {
   private _state: CatState = 'idle'
   private _inCodeApp = false
-  private keyTimer    = 0
-  private mouseTimer  = 0
-  private sleepTimer  = 0
-  private lastActivity = Date.now()
-  private sleepStart = 0
-  private wakeTimer = 0
+  private keyTimer       = 0
+  private mouseTimer     = 0
+  private sleepTimer     = 0
+  private thinkingTimer  = 0
+  private lastActivity   = Date.now()
+  private sleepStart     = 0
+  private wakeTimer      = 0
 
   get state(): CatState { return this._state }
 
@@ -41,12 +43,22 @@ export class StateMachine {
   onAgentThinking() {
     this.lastActivity = Date.now()
     clearTimeout(this.sleepTimer)
+    clearTimeout(this.thinkingTimer)
     if (this._state === 'sleeping') this.enterWaking()
     if (this._state !== 'waking') this._state = 'agent-thinking'
+    // Safety valve: revert to idle if no signal for THINKING_TIMEOUT (e.g. Claude crash)
+    this.thinkingTimer = window.setTimeout(() => {
+      if (this._state === 'agent-thinking') {
+        this._state = 'idle'
+        this.schedSleep()
+      }
+    }, THINKING_TIMEOUT)
   }
 
-  // AI agent finished
+  // AI agent finished — only celebrate if we were watching work (not text-only response)
   onAgentDone() {
+    if (this._state !== 'agent-thinking') return
+    clearTimeout(this.thinkingTimer)
     this.lastActivity = Date.now()
     this._state = 'agent-done'
     window.setTimeout(() => {
