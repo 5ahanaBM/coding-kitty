@@ -56,6 +56,8 @@ export class CatRenderer {
   private lastTickTime = 0
   private breathPeriod = 4       // seconds, randomized ±20% per cycle
   private breathLastSign = 0     // tracks zero-crossing for period randomization
+  private behaviorScheduleNext = 0
+  private currentBehavior: null | { type: 'yawn' | 'headTilt'; end: number; data?: number } = null
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!
@@ -97,6 +99,21 @@ export class CatRenderer {
     this.eyeOffset = {
       x: Math.max(-1, Math.min(1, Math.round(ox))),
       y: Math.max(-1, Math.min(1, Math.round(oy)))
+    }
+  }
+
+  private scheduleBehavior(now: number) {
+    // Randomly pick yawn (every 45-90s feel) or head tilt (every 20-40s feel)
+    // Since scheduleBehavior is called on the 8-12s interval, we weight accordingly
+    if (Math.random() < 0.4) {
+      // Yawn: 800ms duration
+      this.currentBehavior = { type: 'yawn', end: now + 800 }
+    } else {
+      // Head tilt: 1000-3000ms, shift eyes ±1 on x
+      const dir = Math.random() < 0.5 ? -1 : 1
+      const duration = 1000 + Math.random() * 2000
+      this.currentBehavior = { type: 'headTilt', end: now + duration, data: dir }
+      this.setEyeOffset(dir, 0)
     }
   }
 
@@ -172,6 +189,31 @@ export class CatRenderer {
 
     ctx.translate(this.weightOffsetX * P, 0)
 
+    // Idle micro-behavior scheduling and ticking
+    if (state === 'idle') {
+      if (this.behaviorScheduleNext === 0) {
+        this.behaviorScheduleNext = now + (3000 + Math.random() * 5000)
+      }
+      if (now >= this.behaviorScheduleNext && !this.currentBehavior) {
+        this.scheduleBehavior(now)
+        this.behaviorScheduleNext = now + (8000 + Math.random() * 12000)
+      }
+      if (this.currentBehavior && now >= this.currentBehavior.end) {
+        // Clear head tilt eye offset when behavior ends
+        if (this.currentBehavior.type === 'headTilt') {
+          this.setEyeOffset(0, 0)
+        }
+        this.currentBehavior = null
+      }
+    } else {
+      // State left idle — clear behavior state
+      if (this.currentBehavior?.type === 'headTilt') {
+        this.setEyeOffset(0, 0)
+      }
+      this.currentBehavior = null
+      this.behaviorScheduleNext = 0
+    }
+
     if (state === 'sleeping') {
       this.drawSleeping(sleepDepth)
     } else if (state === 'waking') {
@@ -185,9 +227,18 @@ export class CatRenderer {
     } else if (state === 'agent-done') {
       this.drawAgentDone()
     } else {
+      // Apply head tilt body lean when tilting
+      const headTilt = state === 'idle' && this.currentBehavior?.type === 'headTilt'
+        ? (this.currentBehavior.data ?? 0) : 0
+      if (headTilt !== 0) ctx.translate(headTilt * P, 0)
       this.drawBody(state)
       this.drawEars(state)
-      this.drawFace(state, blinking)
+      // Apply yawn head shift (y -1px) before drawing face
+      const isYawning = state === 'idle' && this.currentBehavior?.type === 'yawn'
+      if (isYawning) ctx.translate(0, -P)
+      this.drawFace(state, blinking, isYawning)
+      if (isYawning) ctx.translate(0, P)
+      if (headTilt !== 0) ctx.translate(-headTilt * P, 0)
       this.drawTail(state)
       if (state === 'kneading') this.drawPaws()
     }
@@ -233,7 +284,7 @@ export class CatRenderer {
     px(ctx, 17, Math.round(7 - bob + rightShift), DARK)
   }
 
-  private drawFace(state: CatState, blinking: boolean) {
+  private drawFace(state: CatState, blinking: boolean, isYawning = false) {
     const ctx = this.ctx
     const eo = this.eyeOffset
 
@@ -257,9 +308,13 @@ export class CatRenderer {
 
     // Nose
     rect(ctx, 13, 16, 2, 1, NOSE)
-    // Mouth
-    px(ctx, 12, 17, DARK)
-    px(ctx, 15, 17, DARK)
+    // Mouth — wider when yawning
+    if (isYawning) {
+      px(ctx, 11, 17, DARK); px(ctx, 12, 17, DARK); px(ctx, 14, 17, DARK); px(ctx, 15, 17, DARK)
+    } else {
+      px(ctx, 12, 17, DARK)
+      px(ctx, 15, 17, DARK)
+    }
 
     // Whiskers
     ctx.strokeStyle = WHISKER

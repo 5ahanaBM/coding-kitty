@@ -62,6 +62,7 @@ export class StateMachine {
   }
 
   onMouseActivity() {
+    if (Math.random() < 0.1) return  // 10% chance cat ignores minor events
     this.lastActivity = Date.now()
     clearTimeout(this.mouseTimer)
     clearTimeout(this.sleepTimer)
