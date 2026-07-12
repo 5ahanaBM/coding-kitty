@@ -30,8 +30,15 @@ const STRIPE = '#d4a45a'
 export class CatRenderer {
   private ctx: CanvasRenderingContext2D
   private frame = 0
-  private blinkTimer = 0
-  private blinkInterval = 180 // frames
+  private blinkNext = 0       // performance.now() timestamp of next blink
+  private blinkEnd = 0        // timestamp blink closes
+  private blinkOpen = true    // current blink state
+  private earTwitchNext = 0   // performance.now() of next twitch
+  private earTwitchEnd = 0    // performance.now() twitch release
+  private earTwitchSide = 0   // 0 = left, 1 = right
+  private weightShiftNext = 0
+  private weightShiftEnd = 0
+  private weightOffsetX = 0   // -1, 0, or +1
   private eyeOffset: EyePos = { x: 0, y: 0 }
   private tailAngle = 0
   private raf = 0
@@ -98,13 +105,42 @@ export class CatRenderer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
 
     this.frame++
-    this.blinkTimer++
 
-    const blinking = this.blinkTimer > this.blinkInterval &&
-                     this.blinkTimer < this.blinkInterval + 4
-    if (this.blinkTimer > this.blinkInterval + 6) {
-      this.blinkTimer = 0
-      this.blinkInterval = 120 + Math.floor(Math.random() * 120)
+    const now = performance.now()
+    let blinking = false
+    if (now >= this.blinkNext) {
+      blinking = true
+      if (this.blinkEnd === 0) this.blinkEnd = now + 80  // 80ms closed
+      if (now >= this.blinkEnd) {
+        this.blinkEnd = 0
+        this.blinkNext = now + (2000 + Math.random() * 3000)  // 2-5s between blinks
+      }
+    }
+
+    // Ear twitch channel
+    if (now >= this.earTwitchNext) {
+      if (this.earTwitchEnd === 0) {
+        this.earTwitchEnd = now + 300
+        this.earTwitchSide = Math.random() < 0.5 ? 0 : 1
+      }
+      if (now >= this.earTwitchEnd) {
+        this.earTwitchEnd = 0
+        this.earTwitchNext = now + (8000 + Math.random() * 12000)  // 8-20s
+      }
+    }
+    const earTwitching = this.earTwitchEnd > 0
+
+    // Weight shift channel
+    if (now >= this.weightShiftNext) {
+      if (this.weightShiftEnd === 0) {
+        this.weightOffsetX = Math.random() < 0.5 ? -1 : 1
+        this.weightShiftEnd = now + (1000 + Math.random() * 3000)
+      }
+      if (now >= this.weightShiftEnd) {
+        this.weightOffsetX = 0
+        this.weightShiftEnd = 0
+        this.weightShiftNext = now + (12000 + Math.random() * 13000)  // 12-25s
+      }
     }
 
     this.tailAngle = Math.sin(this.frame * 0.05) * 3
@@ -133,6 +169,8 @@ export class CatRenderer {
       this.breathPeriod = 3.5 + Math.random() * 1.5
     }
     this.breathLastSign = breathSign
+
+    ctx.translate(this.weightOffsetX * P, 0)
 
     if (state === 'sleeping') {
       this.drawSleeping(sleepDepth)
@@ -184,12 +222,15 @@ export class CatRenderer {
   private drawEars(state: CatState) {
     const ctx = this.ctx
     const bob = state === 'kneading' ? Math.sin(this.frame * 0.3) * 1 : 0
+    const twitching = this.earTwitchEnd > 0
+    const leftShift = twitching && this.earTwitchSide === 0 ? -1 : 0
+    const rightShift = twitching && this.earTwitchSide === 1 ? -1 : 0
     // Left ear
-    rect(ctx, 8, Math.round(6 + bob), 4, 4, BODY)
-    px(ctx, 9, Math.round(7 + bob), DARK)
+    rect(ctx, 8, Math.round(6 + bob + leftShift), 4, 4, BODY)
+    px(ctx, 9, Math.round(7 + bob + leftShift), DARK)
     // Right ear
-    rect(ctx, 16, Math.round(6 - bob), 4, 4, BODY)
-    px(ctx, 17, Math.round(7 - bob), DARK)
+    rect(ctx, 16, Math.round(6 - bob + rightShift), 4, 4, BODY)
+    px(ctx, 17, Math.round(7 - bob + rightShift), DARK)
   }
 
   private drawFace(state: CatState, blinking: boolean) {
