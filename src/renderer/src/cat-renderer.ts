@@ -466,7 +466,9 @@ export class CatRenderer {
       this.drawSleeping(0.3)
     } else if (phase === 2) {
       // Uncurling — body upright, eyes half-closed
+      this.setStretch(1.0, 1.15)
       this.drawBody('idle')
+      this.setStretch(1.0, 1.0)
       this.drawEars('idle')
       this.drawTail('idle')
       // Head
@@ -490,13 +492,13 @@ export class CatRenderer {
       px(ctx, 19, 4, DARK)
       this.drawFace('idle', false)
     } else {
-      // Phase 4: head shake — translate 1px left
-      ctx.save()
-      ctx.translate(-P, 0)
+      // Phase 4: head shake — only head shifts -1px
       this.drawBody('idle')
       this.drawEars('idle')
-      this.drawFace('idle', false)
       this.drawTail('idle')
+      ctx.save()
+      ctx.translate(-P, 0)
+      this.drawFace('idle', false)
       ctx.restore()
     }
   }
