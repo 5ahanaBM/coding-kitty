@@ -43,7 +43,7 @@ export class CatRenderer {
   private springDecay = 11.7  // zeta * omega_0 = 0.65 * 18
   private springOmega = 13.7  // omega_d = 18 * sqrt(1 - 0.65^2)
   private prevState: CatState = 'idle'
-  private zParticles: { y: number; opacity: number; lastSpawn: number }[] = []
+  private zParticles: { y: number; opacity: number }[] = []
   private lastZSpawn = 0
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -358,7 +358,7 @@ export class CatRenderer {
 
     // Spawn new Z every 700ms while sleeping
     if (now - this.lastZSpawn > 700) {
-      this.zParticles.push({ y: 10, opacity: 1, lastSpawn: now })
+      this.zParticles.push({ y: 10, opacity: 1 })
       this.lastZSpawn = now
     }
 
