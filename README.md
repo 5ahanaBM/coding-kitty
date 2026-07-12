@@ -34,7 +34,9 @@ To undo:
 npm run teardown
 ```
 
-**Manual setup** (if `npm run setup` fails): add these entries to `~/.claude/settings.json`:
+**Manual setup** (if `npm run setup` fails): add these entries to `~/.claude/settings.json`.
+
+If you already have a `hooks` key, append each object into the existing `PreToolUse` and `PostToolUse` arrays. If you don't have a `hooks` key yet, add the full block:
 
 ```json
 "hooks": {

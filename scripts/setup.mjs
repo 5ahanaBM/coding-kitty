@@ -58,7 +58,7 @@ try {
   }
 
   // Ensure hooks structure exists
-  if (!config.hooks) config.hooks = {}
+  if (!config.hooks || typeof config.hooks !== 'object' || Array.isArray(config.hooks)) config.hooks = {}
   if (!Array.isArray(config.hooks.PreToolUse))  config.hooks.PreToolUse  = []
   if (!Array.isArray(config.hooks.PostToolUse)) config.hooks.PostToolUse = []
 
