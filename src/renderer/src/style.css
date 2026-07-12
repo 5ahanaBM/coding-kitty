@@ -1,0 +1,42 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  background: transparent;
+  overflow: hidden;
+  width: 200px;
+  height: 200px;
+  -webkit-app-region: no-drag;
+  user-select: none;
+}
+
+#cat-container {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+#cat {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  cursor: grab;
+  image-rendering: pixelated;
+}
+
+#cat:active {
+  cursor: grabbing;
+}
+
+#cat-canvas {
+  width: 96px;
+  height: 96px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}

@@ -1,0 +1,22 @@
+{
+  "name": "coding-kitty",
+  "version": "0.1.0",
+  "description": "A pixel art cat that lives on your screen",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^38.2.0",
+    "electron-builder": "^25.0.0",
+    "electron-vite": "^3.0.0",
+    "playwright-core": "^1.61.1",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}
