@@ -62,11 +62,11 @@ export class StateMachine {
   }
 
   onMouseActivity() {
-    if (Math.random() < 0.1) return  // 10% chance cat ignores minor events
     this.lastActivity = Date.now()
     clearTimeout(this.mouseTimer)
     clearTimeout(this.sleepTimer)
     if (this._state === 'sleeping') this.enterWaking()
+    if (Math.random() < 0.1) return  // 10% chance cat ignores minor events
     if (this._state === 'idle') this._state = 'looking'
     this.mouseTimer = window.setTimeout(() => {
       if (this._state === 'looking') this._state = 'idle'

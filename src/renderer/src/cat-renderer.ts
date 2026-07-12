@@ -26,7 +26,7 @@ const EYE_HI = '#ffffff'
 const EYE_IRIS = '#3a6e3a'
 const EYE_PUPIL = '#2a1a0a'
 const NOSE = '#e88a9a'
-const WHISKER = '#bbb'
+const WHISKER = '#a08060'
 const STRIPE = '#d4a45a'
 const FUR_DEEP = '#9a6228'   // sel-out shadow/outline
 const FUR_HI = '#ffe4a8'     // highlight
@@ -36,11 +36,10 @@ export class CatRenderer {
   private frame = 0
   private blinkNext = 0       // performance.now() timestamp of next blink
   private blinkEnd = 0        // timestamp blink closes
-  private blinkOpen = true    // current blink state
-  private earTwitchNext = 0   // performance.now() of next twitch
+  private earTwitchNext = 10000   // performance.now() of next twitch
   private earTwitchEnd = 0    // performance.now() twitch release
   private earTwitchSide = 0   // 0 = left, 1 = right
-  private weightShiftNext = 0
+  private weightShiftNext = 15000  // defer first weight shift ~15s
   private weightShiftEnd = 0
   private weightOffsetX = 0   // -1, 0, or +1
   private eyeOffset: EyePos = { x: 0, y: 0 }
@@ -153,8 +152,6 @@ export class CatRenderer {
         this.earTwitchNext = now + (8000 + Math.random() * 12000)  // 8-20s
       }
     }
-    const earTwitching = this.earTwitchEnd > 0
-
     // Weight shift channel
     if (now >= this.weightShiftNext) {
       if (this.weightShiftEnd === 0) {
@@ -466,9 +463,12 @@ export class CatRenderer {
       this.drawSleeping(0.3)
     } else if (phase === 2) {
       // Uncurling — body upright, eyes half-closed
+      const savedSx = this.sx
+      const savedSy = this.sy
       this.setStretch(1.0, 1.15)
       this.drawBody('idle')
-      this.setStretch(1.0, 1.0)
+      this.sx = savedSx
+      this.sy = savedSy
       this.drawEars('idle')
       this.drawTail('idle')
       // Head
