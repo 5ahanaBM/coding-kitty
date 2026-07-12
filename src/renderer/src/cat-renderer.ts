@@ -361,12 +361,12 @@ export class CatRenderer {
     ctx.beginPath()
     ctx.moveTo(20 * P, 28 * P)
     ctx.quadraticCurveTo(
-      (24 + ang) * P, 30 * P,
-      (22 + ang * 0.5) * P, 33 * P
+      (24 + ang) * P, 24 * P,
+      (22 + ang * 0.5) * P, 30 * P
     )
     ctx.stroke()
     // Tail tip
-    rect(ctx, Math.round(21 + ang * 0.3), 32, 3, 2, DARK)
+    rect(ctx, Math.round(21 + ang * 0.3), 29, 3, 2, DARK)
   }
 
   private drawPaws() {
@@ -445,8 +445,8 @@ export class CatRenderer {
     const ctx = this.ctx
 
     // Lerp body from sitting-curl to tight ball as depth → 1
-    // depth=0: wide (bx=6, bw=14, bh=8), depth=1: tight ball
-    const bw = Math.round(14 - depth * 2)   // body width: 14 → 12
+    // depth=0: wide (bx=6, bw=16, bh=8), depth=1: tight ball
+    const bw = Math.round(16 - depth * 4)   // body width: 16 → 12
     const bh = Math.round(8 - depth * 2)    // body height: 8 → 6
     const bx = Math.round(6 + depth * 2)    // body x: 6 → 8 (center tighter)
 
