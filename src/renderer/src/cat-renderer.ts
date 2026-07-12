@@ -28,6 +28,8 @@ const EYE_PUPIL = '#2a1a0a'
 const NOSE = '#e88a9a'
 const WHISKER = '#bbb'
 const STRIPE = '#d4a45a'
+const FUR_DEEP = '#9a6228'   // sel-out shadow/outline
+const FUR_HI = '#ffe4a8'     // highlight
 
 export class CatRenderer {
   private ctx: CanvasRenderingContext2D
@@ -258,18 +260,19 @@ export class CatRenderer {
 
   private drawBody(state: CatState) {
     const ctx = this.ctx
-    // Main body blob (sitting cat ~12x14 px logical)
-    rect(ctx, 8, 10, 12, 12, BODY)
-    // Stripes
-    rect(ctx, 10, 11, 2, 4, STRIPE)
-    rect(ctx, 14, 11, 2, 4, STRIPE)
-    // Sitting legs/paws
-    rect(ctx, 7, 20, 4, 3, BODY)
-    rect(ctx, 17, 20, 4, 3, BODY)
-    // Paw details
-    rect(ctx, 7, 22, 4, 1, DARK)
-    rect(ctx, 17, 22, 4, 1, DARK)
-
+    // Main body: 12×12 at x=8, y=18
+    rect(ctx, 8, 18, 12, 12, BODY)
+    // Stripes on body
+    rect(ctx, 10, 19, 2, 4, STRIPE)
+    rect(ctx, 14, 19, 2, 4, STRIPE)
+    // Legs: 4×3 left at x=7,y=29; right at x=17,y=29
+    rect(ctx, 7, 29, 4, 3, BODY)
+    rect(ctx, 17, 29, 4, 3, BODY)
+    // Paw details: DARK 1px bottom of each leg (y=31)
+    rect(ctx, 7, 31, 4, 1, DARK)
+    rect(ctx, 17, 31, 4, 1, DARK)
+    // Sel-out: bottom of body (1px below body at y=30)
+    rect(ctx, 8, 30, 12, 1, FUR_DEEP)
   }
 
   private drawEars(state: CatState) {
@@ -278,12 +281,14 @@ export class CatRenderer {
     const twitching = this.earTwitchEnd > 0
     const leftShift = twitching && this.earTwitchSide === 0 ? -1 : 0
     const rightShift = twitching && this.earTwitchSide === 1 ? -1 : 0
-    // Left ear
-    rect(ctx, 8, Math.round(6 + bob + leftShift), 4, 4, BODY)
-    px(ctx, 9, Math.round(7 + bob + leftShift), DARK)
-    // Right ear
-    rect(ctx, 16, Math.round(6 - bob + rightShift), 4, 4, BODY)
-    px(ctx, 17, Math.round(7 - bob + rightShift), DARK)
+    // Left ear: 3×4 at x=7, y=5 (normal)
+    rect(ctx, 7, Math.round(5 + bob + leftShift), 3, 4, BODY)
+    // Left ear inner: dark 2×2 inside
+    rect(ctx, 8, Math.round(6 + bob + leftShift), 2, 2, DARK)
+    // Right ear: 3×4 at x=18, y=5 (normal)
+    rect(ctx, 18, Math.round(5 - bob + rightShift), 3, 4, BODY)
+    // Right ear inner: dark 2×2 inside
+    rect(ctx, 19, Math.round(6 - bob + rightShift), 2, 2, DARK)
   }
 
   private drawEye(ctx: CanvasRenderingContext2D, bx: number, by: number, eo: EyePos) {
@@ -302,30 +307,35 @@ export class CatRenderer {
     const ctx = this.ctx
     const eo = this.eyeOffset
 
-    // Head circle
-    rect(ctx, 9, 10, 10, 8, BODY)
+    // Head: 14×10 at x=7, y=8
+    rect(ctx, 7, 8, 14, 10, BODY)
+    // Sel-out: bottom of head (1px row at y=18, w=14)
+    rect(ctx, 7, 18, 14, 1, FUR_DEEP)
+    // Sel-out: top of head highlight
+    rect(ctx, 8, 8, 10, 1, FUR_HI)
 
     if (state === 'sleeping') return
 
-    // Eyes
-    const eyeY = 13
+    // Eyes: 3×3 at y=15, left at x=9, right at x=15
+    const eyeY = 15
     if (blinking || state === 'sleeping') {
       // Closed eyes (line)
-      rect(ctx, 10 + eo.x, eyeY, 3, 1, EYE_CLOSED)
+      rect(ctx, 9 + eo.x, eyeY, 3, 1, EYE_CLOSED)
       rect(ctx, 15 + eo.x, eyeY, 3, 1, EYE_CLOSED)
     } else {
-      this.drawEye(ctx, 10, eyeY, eo)
+      this.drawEye(ctx, 9, eyeY, eo)
       this.drawEye(ctx, 15, eyeY, eo)
     }
 
-    // Nose
-    rect(ctx, 13, 16, 2, 1, NOSE)
+    // Nose: 2×1 at x=13, y=18
+    rect(ctx, 13, 18, 2, 1, NOSE)
     // Mouth — wider when yawning
     if (isYawning) {
-      px(ctx, 13, 17, DARK); px(ctx, 14, 17, DARK)
+      px(ctx, 13, 19, DARK); px(ctx, 14, 19, DARK)
     } else {
-      px(ctx, 12, 17, DARK)
-      px(ctx, 15, 17, DARK)
+      // Normal mouth: px at x=12,y=19 and x=15,y=19
+      px(ctx, 12, 19, DARK)
+      px(ctx, 15, 19, DARK)
     }
 
     // Whiskers
@@ -333,38 +343,38 @@ export class CatRenderer {
     ctx.lineWidth = 1
     ctx.beginPath()
     // Left whiskers
-    ctx.moveTo(9 * P, 16 * P); ctx.lineTo(5 * P, 15 * P)
-    ctx.moveTo(9 * P, 17 * P); ctx.lineTo(5 * P, 18 * P)
+    ctx.moveTo(9 * P, 17 * P); ctx.lineTo(5 * P, 16 * P)
+    ctx.moveTo(9 * P, 18 * P); ctx.lineTo(5 * P, 19 * P)
     // Right whiskers
-    ctx.moveTo(19 * P, 16 * P); ctx.lineTo(23 * P, 15 * P)
-    ctx.moveTo(19 * P, 17 * P); ctx.lineTo(23 * P, 18 * P)
+    ctx.moveTo(21 * P, 17 * P); ctx.lineTo(25 * P, 16 * P)
+    ctx.moveTo(21 * P, 18 * P); ctx.lineTo(25 * P, 19 * P)
     ctx.stroke()
   }
 
   private drawTail(state: CatState) {
     const ctx = this.ctx
     const ang = this.tailAngle
-    // Tail curves from right side
+    // Tail curves from right side of body at new position x=20, y=28
     ctx.strokeStyle = BODY
     ctx.lineWidth = P * 2
     ctx.lineCap = 'round'
     ctx.beginPath()
-    ctx.moveTo(20 * P, 20 * P)
+    ctx.moveTo(20 * P, 28 * P)
     ctx.quadraticCurveTo(
-      (24 + ang) * P, 24 * P,
-      (22 + ang * 0.5) * P, 27 * P
+      (24 + ang) * P, 30 * P,
+      (22 + ang * 0.5) * P, 33 * P
     )
     ctx.stroke()
     // Tail tip
-    rect(ctx, Math.round(21 + ang * 0.3), 26, 3, 2, DARK)
+    rect(ctx, Math.round(21 + ang * 0.3), 32, 3, 2, DARK)
   }
 
   private drawPaws() {
     const ctx = this.ctx
     const bob = Math.sin(this.frame * 0.4)
-    // Front paws kneading motion
-    rect(ctx, 8, Math.round(21 + bob), 4, 2, BODY)
-    rect(ctx, 16, Math.round(21 - bob), 4, 2, BODY)
+    // Front paws kneading motion — adjusted to new leg positions (y=29, x=7/17)
+    rect(ctx, 7, Math.round(29 + bob), 4, 2, BODY)
+    rect(ctx, 17, Math.round(29 - bob), 4, 2, BODY)
   }
 
   private drawAgentThinking() {
@@ -372,18 +382,20 @@ export class CatRenderer {
     // Cat watching intently — alert posture, wide eyes
     this.drawBody('idle')
     this.drawTail('idle')
-    // Ears perked up
-    rect(ctx, 8, 4, 4, 5, BODY)
-    px(ctx, 9, 5, DARK)
-    rect(ctx, 16, 4, 4, 5, BODY)
-    px(ctx, 17, 5, DARK)
-    // Face
-    rect(ctx, 9, 10, 10, 8, BODY)
-    // Alert structured eyes (3×3)
-    this.drawEye(ctx, 10, 12, { x: 0, y: 0 })
-    this.drawEye(ctx, 15, 12, { x: 0, y: 0 })
+    // Ears perked to y=3 (2px above normal y=5): 3×4 each
+    rect(ctx, 7, 3, 3, 4, BODY)
+    rect(ctx, 8, 4, 2, 2, DARK)
+    rect(ctx, 18, 3, 3, 4, BODY)
+    rect(ctx, 19, 4, 2, 2, DARK)
+    // Face: head 14×10 at x=7, y=8
+    rect(ctx, 7, 8, 14, 10, BODY)
+    rect(ctx, 7, 18, 14, 1, FUR_DEEP)
+    rect(ctx, 8, 8, 10, 1, FUR_HI)
+    // Alert structured eyes at new positions y=15, left x=9, right x=15
+    this.drawEye(ctx, 9, 15, { x: 0, y: 0 })
+    this.drawEye(ctx, 15, 15, { x: 0, y: 0 })
     // Nose + mouth
-    rect(ctx, 13, 16, 2, 1, NOSE)
+    rect(ctx, 13, 18, 2, 1, NOSE)
     // Thought bubbles (animated)
     const bubbleFrame = Math.floor(this.frame / 20) % 3
     ctx.fillStyle = 'rgba(200,200,220,0.8)'
@@ -403,18 +415,20 @@ export class CatRenderer {
     ctx.translate(0, hopY * P)
     this.drawBody('idle')
     this.drawEars('idle')
-    // Big happy eyes (^_^)
-    rect(ctx, 9, 10, 10, 8, BODY)
-    // Happy arc eyes
+    // Head: 14×10 at x=7, y=8
+    rect(ctx, 7, 8, 14, 10, BODY)
+    rect(ctx, 7, 18, 14, 1, FUR_DEEP)
+    rect(ctx, 8, 8, 10, 1, FUR_HI)
+    // Happy arc eyes — adjusted to new eye positions y=15, left x=9, right x=15
     ctx.strokeStyle = EYE_OPEN
     ctx.lineWidth = P
     ctx.beginPath()
-    ctx.arc(12 * P, 14 * P, 2 * P, Math.PI, 0)
+    ctx.arc(11 * P, 16 * P, 2 * P, Math.PI, 0)
     ctx.stroke()
     ctx.beginPath()
-    ctx.arc(17 * P, 14 * P, 2 * P, Math.PI, 0)
+    ctx.arc(17 * P, 16 * P, 2 * P, Math.PI, 0)
     ctx.stroke()
-    rect(ctx, 13, 16, 2, 1, NOSE)
+    rect(ctx, 13, 18, 2, 1, NOSE)
     this.drawTail('idle')
     // Star sparkles — inside save/restore so they squash with body
     ctx.fillStyle = '#ffd700'
@@ -431,16 +445,16 @@ export class CatRenderer {
     const ctx = this.ctx
 
     // Lerp body from sitting-curl to tight ball as depth → 1
-    // depth=0: wide curled body (16×10), depth=1: tight ball (12×8)
-    const bw = Math.round(16 - depth * 4)   // body width: 16 → 12
-    const bh = Math.round(10 - depth * 2)   // body height: 10 → 8
+    // depth=0: wide (bx=6, bw=14, bh=8), depth=1: tight ball
+    const bw = Math.round(14 - depth * 2)   // body width: 14 → 12
+    const bh = Math.round(8 - depth * 2)    // body height: 8 → 6
     const bx = Math.round(6 + depth * 2)    // body x: 6 → 8 (center tighter)
 
-    rect(ctx, bx, 14, bw, bh, BODY)
+    rect(ctx, bx, 20, bw, bh, BODY)
 
     // Head tucked — pulls in slightly at high depth
     const hx = Math.round(9 + depth * 1)
-    rect(ctx, hx, 12, 8, 6, BODY)
+    rect(ctx, hx, 12, 10, 6, BODY)
 
     // Ears flatten more at high depth
     const earY = Math.round(10 + depth * 1)
@@ -449,7 +463,7 @@ export class CatRenderer {
 
     // Closed eyes
     rect(ctx, 10, 14, 3, 1, EYE_CLOSED)
-    rect(ctx, 15, 14, 3, 1, EYE_CLOSED)
+    rect(ctx, 16, 14, 3, 1, EYE_CLOSED)
     // No Zzz here — tickZParticles handles it
   }
 
