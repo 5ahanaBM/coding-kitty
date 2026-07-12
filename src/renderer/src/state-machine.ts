@@ -30,7 +30,7 @@ export class StateMachine {
     clearTimeout(this.keyTimer)
     clearTimeout(this.sleepTimer)
     if (this._state === 'sleeping') this.enterWaking()
-    if (this._state !== 'stretching' && this._state !== 'scrolling' && this._state !== 'agent-thinking') {
+    if (this._state !== 'stretching' && this._state !== 'scrolling' && this._state !== 'agent-thinking' && this._state !== 'waking') {
       this._state = 'kneading'
     }
     this.keyTimer = window.setTimeout(() => {
@@ -44,7 +44,7 @@ export class StateMachine {
     this.lastActivity = Date.now()
     clearTimeout(this.sleepTimer)
     if (this._state === 'sleeping') this.enterWaking()
-    this._state = 'agent-thinking'
+    if (this._state !== 'waking') this._state = 'agent-thinking'
   }
 
   // AI agent finished
@@ -80,7 +80,7 @@ export class StateMachine {
     clearTimeout(this.scrollTimer)
     clearTimeout(this.sleepTimer)
     if (this._state === 'sleeping') this.enterWaking()
-    if (this._state !== 'stretching' && this._state !== 'agent-thinking') this._state = 'scrolling'
+    if (this._state !== 'stretching' && this._state !== 'agent-thinking' && this._state !== 'waking') this._state = 'scrolling'
     this.scrollTimer = window.setTimeout(() => {
       if (this._state === 'scrolling') this._state = 'idle'
       this.schedSleep()

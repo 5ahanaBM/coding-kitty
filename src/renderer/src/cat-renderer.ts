@@ -45,6 +45,7 @@ export class CatRenderer {
   private prevState: CatState = 'idle'
   private zParticles: { y: number; opacity: number }[] = []
   private lastZSpawn = 0
+  private lastTickTime = 0
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext('2d')!
@@ -58,6 +59,7 @@ export class CatRenderer {
   }
 
   triggerSpring(zeta: number) {
+    zeta = Math.min(zeta, 0.99)
     const omega0 = 18
     this.springDecay = zeta * omega0
     this.springOmega = omega0 * Math.sqrt(1 - zeta * zeta)
@@ -143,7 +145,12 @@ export class CatRenderer {
     ctx.restore()
 
     // Z particles drawn outside ctx.scale — they float in canvas space
-    if (state === 'sleeping') this.tickZParticles()
+    if (state === 'sleeping') {
+      this.tickZParticles()
+    } else {
+      // Reset tick time so first frame back in sleep uses safe fallback dt
+      this.lastTickTime = 0
+    }
   }
 
   private drawBody(state: CatState) {
@@ -355,6 +362,8 @@ export class CatRenderer {
   private tickZParticles() {
     const ctx = this.ctx
     const now = performance.now()
+    const dt = this.lastTickTime ? Math.min((now - this.lastTickTime) / 1000, 0.05) : 1 / 60
+    this.lastTickTime = now
 
     // Spawn new Z every 700ms while sleeping
     if (now - this.lastZSpawn > 700) {
@@ -366,10 +375,10 @@ export class CatRenderer {
     ctx.font = `${P * 2}px monospace`
     for (let i = this.zParticles.length - 1; i >= 0; i--) {
       const z = this.zParticles[i]
-      // Float upward: 8 logical px over 2s = 0.004 logical px/ms
-      z.y -= 0.004 * (1000 / 60)  // ~per frame at 60fps
-      // Fade over 2s
-      z.opacity -= 1 / (2 * 60)
+      // Float upward: 4 logical px/sec → 8px over 2s at any frame rate
+      z.y -= 4 * dt
+      // Fade to 0 over 2s at any frame rate
+      z.opacity -= dt / 2
       if (z.opacity <= 0) {
         this.zParticles.splice(i, 1)
         continue
