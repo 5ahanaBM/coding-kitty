@@ -1,6 +1,6 @@
 import type { CatState } from './cat-renderer'
 
-const KNEADING_TIMEOUT  = 800
+const KNEADING_TIMEOUT  = 1600
 const LOOKING_TIMEOUT   = 2000
 const SLEEP_TIMEOUT     = 5 * 60 * 1000
 const AGENT_DONE_LINGER = 3000  // celebrate for 3s after agent finishes
@@ -93,7 +93,7 @@ export class StateMachine {
     this.wakeTimer = window.setTimeout(() => {
       if (this._state === 'waking') this._state = 'idle'
       this.schedSleep()
-    }, 200)
+    }, 450)
   }
 
   private schedSleep() {

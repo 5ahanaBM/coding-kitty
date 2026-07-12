@@ -55,6 +55,10 @@ export class CatRenderer {
   private springDecay = 11.7  // zeta * omega_0 = 0.65 * 18
   private springOmega = 13.7  // omega_d = 18 * sqrt(1 - 0.65^2)
   private prevState: CatState = 'idle'
+  private wakePhase = 0
+  private wakePhaseEnd = 0
+  private agentDonePhase = 0
+  private agentDonePhaseEnd = 0
   private zParticles: { y: number; opacity: number }[] = []
   private lastZSpawn = 0
   private lastTickTime = 0
@@ -168,13 +172,6 @@ export class CatRenderer {
 
     this.tickSpring()
 
-    // Wake-up one-shot: detect first frame of 'waking' state
-    if (state === 'waking' && this.prevState !== 'waking') {
-      this.setStretch(0.85, 1.1)
-      this.triggerSpring(0.65)
-    }
-    this.prevState = state
-
     ctx.save()
     ctx.translate(48, 96)   // anchor: canvas center-bottom
     ctx.scale(this.sx, this.sy)
@@ -221,15 +218,38 @@ export class CatRenderer {
     if (state === 'sleeping') {
       this.drawSleeping(sleepDepth)
     } else if (state === 'waking') {
-      // Draw idle pose — spring deformation handles the visual
-      this.drawBody('idle')
-      this.drawEars('idle')
-      this.drawFace('idle', blinking)
-      this.drawTail('idle')
+      const nowWake = performance.now()
+      if (this.prevState !== 'waking') {
+        this.wakePhase = 1
+        this.wakePhaseEnd = nowWake + 100
+      }
+      if (nowWake >= this.wakePhaseEnd && this.wakePhase < 4) {
+        this.wakePhase++
+        const durations = [0, 100, 150, 100, 100]
+        this.wakePhaseEnd = nowWake + durations[this.wakePhase]
+      }
+      this.drawWaking(this.wakePhase)
     } else if (state === 'agent-thinking') {
       this.drawAgentThinking()
     } else if (state === 'agent-done') {
+      const nowHop = performance.now()
+      if (this.prevState !== 'agent-done' || this.agentDonePhase === 0) {
+        this.agentDonePhase = 1
+        this.agentDonePhaseEnd = nowHop + 100
+      }
+      if (nowHop >= this.agentDonePhaseEnd) {
+        this.agentDonePhase = this.agentDonePhase >= 6 ? 1 : this.agentDonePhase + 1
+        const durations = [0, 100, 80, 200, 80, 150, 100]
+        this.agentDonePhaseEnd = nowHop + durations[this.agentDonePhase]
+        if (this.agentDonePhase === 5) this.setStretch(1.2, 0.8)
+        if (this.agentDonePhase === 6) this.triggerSpring(0.7)
+      }
+      const hopOffsets = [0, 1, -4, -6, -2, 1, 0]
+      const hopY = hopOffsets[this.agentDonePhase] || 0
+      ctx.save()
+      ctx.translate(0, hopY * P)
       this.drawAgentDone()
+      ctx.restore()
     } else {
       // Apply head tilt body lean when tilting
       const headTilt = state === 'idle' && this.currentBehavior?.type === 'headTilt'
@@ -248,6 +268,8 @@ export class CatRenderer {
     }
 
     ctx.restore()
+
+    this.prevState = state
 
     // Z particles drawn outside ctx.scale — they float in canvas space
     if (state === 'sleeping') {
@@ -410,9 +432,6 @@ export class CatRenderer {
   private drawAgentDone() {
     const ctx = this.ctx
     // Cat celebrating — little hop, happy face
-    const hopY = Math.abs(Math.sin(this.frame * 0.3)) * -3
-    ctx.save()
-    ctx.translate(0, hopY * P)
     this.drawBody('idle')
     this.drawEars('idle')
     // Head: 14×10 at x=7, y=8
@@ -430,7 +449,7 @@ export class CatRenderer {
     ctx.stroke()
     rect(ctx, 13, 18, 2, 1, NOSE)
     this.drawTail('idle')
-    // Star sparkles — inside save/restore so they squash with body
+    // Star sparkles
     ctx.fillStyle = '#ffd700'
     const t = this.frame * 0.15
     for (let i = 0; i < 3; i++) {
@@ -438,7 +457,48 @@ export class CatRenderer {
       const sy = (8 + Math.sin(t + i * 2.1) * 4) * P
       ctx.fillRect(sx, sy, P, P)
     }
-    ctx.restore()
+  }
+
+  private drawWaking(phase: number) {
+    const ctx = this.ctx
+    if (phase === 1) {
+      // Still sleeping — show sleeping pose
+      this.drawSleeping(0.3)
+    } else if (phase === 2) {
+      // Uncurling — body upright, eyes half-closed
+      this.drawBody('idle')
+      this.drawEars('idle')
+      this.drawTail('idle')
+      // Head
+      rect(ctx, 7, 8, 14, 10, BODY)
+      rect(ctx, 7, 18, 14, 1, FUR_DEEP)
+      rect(ctx, 8, 8, 10, 1, FUR_HI)
+      // Half-closed eyes (1px lines)
+      const eyeY = 15
+      rect(ctx, 9, eyeY, 3, 1, EYE_CLOSED)
+      rect(ctx, 15, eyeY, 3, 1, EYE_CLOSED)
+      // Nose
+      rect(ctx, 13, 18, 2, 1, NOSE)
+    } else if (phase === 3) {
+      // Upright, eyes open, ears perked 2px above normal
+      this.drawBody('idle')
+      this.drawTail('idle')
+      // Ears at y=3 (normal y=5, perked 2px above)
+      rect(ctx, 7, 3, 3, 4, BODY)
+      px(ctx, 8, 4, DARK)
+      rect(ctx, 18, 3, 3, 4, BODY)
+      px(ctx, 19, 4, DARK)
+      this.drawFace('idle', false)
+    } else {
+      // Phase 4: head shake — translate 1px left
+      ctx.save()
+      ctx.translate(-P, 0)
+      this.drawBody('idle')
+      this.drawEars('idle')
+      this.drawFace('idle', false)
+      this.drawTail('idle')
+      ctx.restore()
+    }
   }
 
   private drawSleeping(depth: number) {
